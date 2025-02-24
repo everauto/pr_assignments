@@ -32,7 +32,7 @@ def main():
     logger.addHandler(stream_handler)
 
     # PRS_ASSIGNED = r"J:\Admin & Plans Unit\Recovery Systems\4. Team Folder\Jonathan\Jonathan Projects\PR Assignment\data"
-    DESTINATION_FOLDER = r'J:\Admin & Plans Unit\Recovery Systems\1. Systems\Python Scripts\Morning Script\modules\Assign_Programmatic_Reviewer\data'
+    DESTINATION_FOLDER = r'J:\Admin & Plans Unit\Recovery Systems\1. Systems\Python Scripts\Morning Script\modules\Assign_Programmatic_Reviewer\temp'
     FLPA_ACCOUNTS = r"J:\Admin & Plans Unit\Recovery Systems\2. Reports\4. Data Files\FLPA Accounts Export"
     ALL_EVENTS = r"J:\Admin & Plans Unit\Recovery Systems\2. Reports\4. Data Files\FLPA Grants"
     PR_LIST = ['John Hayth', 'Hamza Sattar', 'Ashley Mitchell', 'Collin Kenline', 'Rachel Langston', 'Haley Beary', 'Travis Ancion']
@@ -176,16 +176,17 @@ def main():
 
     def get_unique_accounts_to_be_assigned(prs_assigned_df: pd.DataFrame, flpa_accounts_df: pd.DataFrame) -> pd.DataFrame:
         # Get Applicants Not Assigned PRs
-        columns_to_drop = ['PR', 'FIPS #', 'Account Status', 'County', 'Classification']
+        columns_to_drop = ['PR', 'Applicant Name','Account Status', 'County', 'Classification']
         prs_assigned_stripped_df = prs_assigned_df.drop(columns=columns_to_drop)
-        unique_applicants = merge_dfs(flpa_accounts_df, prs_assigned_stripped_df, ['Applicant Name', 'Grant #'], 'left', 'left_only')
-        unique_applicants.drop_duplicates(subset='Applicant Name', inplace=True)
+        
+        unique_applicants = merge_dfs(flpa_accounts_df, prs_assigned_stripped_df, ['FIPS #', 'Grant #'], 'left', 'left_only')
+        unique_applicants.drop_duplicates(subset='FIPS #', inplace=True)
         columns_to_keep = ['Grant #','Applicant Name', 'Account Status','FIPS #', 'County', 'Classification']
         unique_accounts_to_be_assigned = unique_applicants[columns_to_keep]
-
+        print(unique_accounts_to_be_assigned)
         return unique_accounts_to_be_assigned
 
-
+    
     def update_event_total_by_pr_df(currently_assigned: pd.DataFrame, pr_obj_list: list[object], events: list[str]) -> list[object]:
         for i in pr_obj_list:
             for event in events:
@@ -304,6 +305,7 @@ def main():
         currently_assigned = get_prs_assigned_df(DESTINATION_FOLDER)
         flpa_accounts_df = get_flpa_account_df(FLPA_ACCOUNTS)
         accounts_to_assign = get_unique_accounts_to_be_assigned(currently_assigned, flpa_accounts_df)
+        return
         print('Accounts to be assigned')
         print(accounts_to_assign)
         open_events = get_open_events(events)
