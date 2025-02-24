@@ -32,12 +32,12 @@ def main():
     logger.addHandler(stream_handler)
 
     # PRS_ASSIGNED = r"J:\Admin & Plans Unit\Recovery Systems\4. Team Folder\Jonathan\Jonathan Projects\PR Assignment\data"
-    DESTINATION_FOLDER = r'J:\Admin & Plans Unit\Recovery Systems\1. Systems\Python Scripts\Morning Script\modules\Assign_Programmatic_Reviewer\temp'
+    DESTINATION_FOLDER = r'J:\Admin & Plans Unit\Recovery Systems\1. Systems\Python Scripts\Morning Script\modules\Assign_Programmatic_Reviewer\data'
     FLPA_ACCOUNTS = r"J:\Admin & Plans Unit\Recovery Systems\2. Reports\4. Data Files\FLPA Accounts Export"
     ALL_EVENTS = r"J:\Admin & Plans Unit\Recovery Systems\2. Reports\4. Data Files\FLPA Grants"
     PR_LIST = ['John Hayth', 'Hamza Sattar', 'Ashley Mitchell', 'Collin Kenline', 'Rachel Langston', 'Haley Beary', 'Travis Ancion']
     CLASSIFICATION_REGEX_DICT = {'Collin Kenline': ['State Agency'], 'Hamza Sattar': ['Water Management District'], 'Rachel Langston': ['County Sheriff']}
-    KEYWORD_REGEX_DICT = {'John Hayth': ['Electric Coop', 'ELECTRIC COOP', 'Elec Co-', 'ELEC CO-', 'Electric Membership', 'ELECTRIC MEMBERSHIP', 'Utility Authority',  'UTILITY AUTHORITY', 'Utilities Authority', 'UTILITIES AUTHORITY', 'Electric Authority', 'ELECTRIC AUTHORITY'], 'Rachel Langston': ['fire', 'FIRE']}
+    KEYWORD_REGEX_DICT = {'John Hayth': ['Electric Coop', 'ELECTRIC COOP', 'Elec Co-', 'ELEC CO-', 'Electric Membership', 'ELECTRIC MEMBERSHIP', 'Utility Authority',  'UTILITY AUTHORITY', 'Utilities Authority', 'UTILITIES AUTHORITY', 'Electric Authority', 'ELECTRIC AUTHORITY'], 'Rachel Langston': ['fire', 'FIRE', 'Fire']}
     file_name = f'PR_Assignments_{date.today().strftime("%Y-%#m-%#d")}'
 
 
@@ -178,12 +178,10 @@ def main():
         # Get Applicants Not Assigned PRs
         columns_to_drop = ['PR', 'Applicant Name','Account Status', 'County', 'Classification']
         prs_assigned_stripped_df = prs_assigned_df.drop(columns=columns_to_drop)
-        
         unique_applicants = merge_dfs(flpa_accounts_df, prs_assigned_stripped_df, ['FIPS #', 'Grant #'], 'left', 'left_only')
         unique_applicants.drop_duplicates(subset='FIPS #', inplace=True)
         columns_to_keep = ['Grant #','Applicant Name', 'Account Status','FIPS #', 'County', 'Classification']
         unique_accounts_to_be_assigned = unique_applicants[columns_to_keep]
-        print(unique_accounts_to_be_assigned)
         return unique_accounts_to_be_assigned
 
     
@@ -228,10 +226,10 @@ def main():
     
 
     def assign_pr_to_existing_applcants(existing_applicants_to_assign_accounts: pd.DataFrame, currently_assigned) -> pd.DataFrame:
-        selected_columns = ['PR', 'Applicant Name']
+        selected_columns = ['PR', 'FIPS #']
         currently_assigned = currently_assigned[selected_columns]
-        currently_assigned = currently_assigned.drop_duplicates(subset='Applicant Name')
-        assignment_records = existing_applicants_to_assign_accounts.merge(currently_assigned, on=['Applicant Name'], how='left', indicator=True)
+        currently_assigned = currently_assigned.drop_duplicates(subset='FIPS #')
+        assignment_records = existing_applicants_to_assign_accounts.merge(currently_assigned, on=['FIPS #'], how='left', indicator=True)
         assignment_records = assignment_records[assignment_records['_merge'] == 'both']
         assignment_records.drop('_merge', axis=1, inplace=True)
 
@@ -257,7 +255,6 @@ def main():
             score_list = []
             pr_name_list = []
             for pr in pr_list:
-                applicant = row['Applicant Name']
                 event = row['Grant #']
                 score = pr.get_score(event)
                 score_list.append(score)
@@ -305,15 +302,15 @@ def main():
         currently_assigned = get_prs_assigned_df(DESTINATION_FOLDER)
         flpa_accounts_df = get_flpa_account_df(FLPA_ACCOUNTS)
         accounts_to_assign = get_unique_accounts_to_be_assigned(currently_assigned, flpa_accounts_df)
-        return
         print('Accounts to be assigned')
         print(accounts_to_assign)
         open_events = get_open_events(events)
-        apps_already_assigned_list = currently_assigned['Applicant Name'].tolist()
-        existing_applicants_df = accounts_to_assign[accounts_to_assign['Applicant Name'].isin(apps_already_assigned_list)]
-        non_existing_applicants_df = accounts_to_assign[~accounts_to_assign['Applicant Name'].isin(apps_already_assigned_list)]
-        non_existing_applicants_df['PR'] = np.nan
 
+        # apps_already_assigned_list = currently_assigned['Applicant Name'].tolist()
+        apps_already_assigned_list = currently_assigned['FIPS #'].tolist()
+        existing_applicants_df = accounts_to_assign[accounts_to_assign['FIPS #'].isin(apps_already_assigned_list)]
+        non_existing_applicants_df = accounts_to_assign[~accounts_to_assign['FIPS #'].isin(apps_already_assigned_list)]
+        non_existing_applicants_df['PR'] = np.nan
 
         # Create list[obj] of Programmatic Reviewers
         pr_class_list = initiate_pr_objects(pr_list, open_events)
@@ -324,6 +321,7 @@ def main():
     
         # Assign accounts to Programmatic Reviewer who are already assigned those applicants accounts
         pr_assignments_existing_applicants = assign_pr_to_existing_applcants(existing_applicants_df, currently_assigned)
+    
         appended_currently_assigned_df = append_dfs(currently_assigned, pr_assignments_existing_applicants)
 
         appended_currently_assigned_df.to_csv("J:\\Admin & Plans Unit\\Recovery Systems\\1. Systems\\Python Scripts\\Morning Script\\modules\\Assign_Programmatic_Reviewer\\test\\currently_assigned\\test.csv", index=False)
